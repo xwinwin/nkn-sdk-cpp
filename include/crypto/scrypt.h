@@ -34,7 +34,7 @@ struct SCRYPT<uBigInt<N>> {
         if (pctx != NULL) {
             bool ok = EVP_PKEY_derive_init(pctx) > 0
                 && EVP_PKEY_CTX_set1_pbe_pass(pctx, pswd.c_str(), pswd.size()) > 0
-                && EVP_PKEY_CTX_set1_scrypt_salt(pctx, s.c_str(), s.size()) > 0
+                && EVP_PKEY_CTX_set1_scrypt_salt(pctx, (const unsigned char*)s.c_str(), s.size()) > 0
                 && EVP_PKEY_CTX_set_scrypt_N(pctx, n) > 0
                 && EVP_PKEY_CTX_set_scrypt_r(pctx, r) > 0
                 && EVP_PKEY_CTX_set_scrypt_p(pctx, p) > 0;

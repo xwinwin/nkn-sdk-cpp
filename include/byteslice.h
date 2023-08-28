@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <cassert>
+#include <iterator>
 
 // corresponding to golang's byte slice
 class byteSlice: public std::basic_string<char> {

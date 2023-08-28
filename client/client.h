@@ -256,7 +256,7 @@ private:
 
             auto outboundMsg = newOutboundMessage(
                     vector<shared_ptr<Address_t>>(destPos, dests.end()),
-                    vector<shared_ptr<string>>(dataPos, msgList.end()),
+                    vector<shared_ptr<string>>(dataPos, (vector<shared_ptr<string>>::const_iterator)msgList.end()),
                     true, maxHoldingSeconds
                     );
             obMsgList->push_back(outboundMsg);
