@@ -3,6 +3,7 @@ project(nkn_sdk_cpp_priv C CXX)
 
 set(BUILD_SHARED_LIBS ON)
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_compile_options("-g" "-O0")
 
@@ -31,8 +32,50 @@ else()
         PATHS ENV GMP_LIBRARY_DIR
         DOC "Path to the GMP library"
         )
-
 endif()
+
+add_subdirectory(thirdparty/cpprestsdk)
+
+execute_process(
+        COMMAND git checkout ./CMakeLists.txt ./websocketpp/common/md5.hpp
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/thirdparty/cpprestsdk/Release/libs/websocketpp
+)
+
+execute_process(
+        COMMAND git apply ${PROJECT_SOURCE_DIR}/nkn-sdk-cpp-websocketpp.patch
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+)
+
+if (APPLE)
+        add_custom_target(build_libsodium ALL
+                COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/libsodium/autogen.sh -s
+                COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/libsodium/dist-build/macos.sh
+                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/thirdparty/libsodium/
+                COMMENT "Building libsodium ..."
+)
+elseif (UNIX AND NOT APLLE)
+        add_custom_target(build_libsodium ALL
+                COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/libsodium/autogen.sh -s
+                COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/libsodium/configure --prefix=${PROJECT_SOURCE_DIR}/thirdparty/libsodium/libsodium-linux
+                COMMAND make && make install
+                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/thirdparty/libsodium/
+                COMMENT "Building libsodium ..."
+)
+endif()
+
+add_custom_target(genrate_protobuf ALL
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR} --cpp_out=${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/pb/block.proto
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR} --cpp_out=${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/pb/clientmessage.proto
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR} --cpp_out=${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/pb/node.proto
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR} --cpp_out=${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/pb/nodemessage.proto
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR} --cpp_out=${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/pb/sigchain.proto
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR} --cpp_out=${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/pb/transaction.proto
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR}/payloads --cpp_out=${PROJECT_SOURCE_DIR}/payloads gogo.proto
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR}/payloads --cpp_out=${PROJECT_SOURCE_DIR}/payloads payloads.proto
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR}/ncp/pb --cpp_out=${PROJECT_SOURCE_DIR}/ncp/pb packet.proto
+        COMMAND protoc --proto_path=${PROJECT_SOURCE_DIR}/tuna/pb --cpp_out=${PROJECT_SOURCE_DIR}/tuna/pb session.proto
+        COMMENT "Generating protobuf messages ..."
+)
 
 include_directories(client)
 include_directories(include)
@@ -49,13 +92,16 @@ include_directories(thirdparty/cpprestsdk/Release/include)
 include_directories(thirdparty/rapidjson/include)
 include_directories(thirdparty/object_threadsafe)
 include_directories(thirdparty/spdlog/include)
+if (APPLE)
+        include_directories(thirdparty/libsodium/libsodium-osx/include)
+elseif (UNIX AND NOT APPLE)
+	include_directories(thirdparty/libsodium/libsodium-linux/include)
+endif()
 include_directories(${Boost_INCLUDE_DIR})
 include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${Protobuf_INCLUDE_DIR})
 include_directories(${GMP_INCLUDE_DIR})
-#include_directories(/usr/local/Cellar/libsodium/1.0.18_1/include)
 include_directories(.)
-
 
 set(HEADERS
         client/address.h
@@ -141,9 +187,17 @@ set(SDK_SOURCES
         client/message.cpp
         )
 
+if (APPLE)
+        set(SODIUM_LIBRARY_DIR thirdparty/libsodium/libsodium-osx/lib)
+elseif (UNIX AND NOT APPLE)
+	set(SODIUM_LIBRARY_DIR thirdparty/libsodium/libsodium-linux/lib)
+endif()
+
 link_directories(
-    ${Boost_LIBRARIES_DIR}
+        ${Boost_LIBRARIES_DIR}
         ${GMP_LIBRARY_DIR}
+        ${SODIUM_LIBRARY_DIR}
+        ${Protobuf_LIBRARIES_DIR}
         /opt/homebrew/lib
         ./
         )
@@ -155,7 +209,7 @@ target_link_libraries(nkn_wallet
         -lgmp
         -lgmpxx
         ${OPENSSL_CRYPTO_LIBRARIES}
-        -lcpprest
+        cpprest
         )
 
 add_library(nkn_sdk SHARED ${SDK_SOURCES})
@@ -165,6 +219,12 @@ target_link_libraries(nkn_sdk
         -lgmp
         -lgmpxx
         ${OPENSSL_CRYPTO_LIBRARIES}
-        -lcpprest
         nkn_wallet
+        cpprest
         )
+
+add_executable(rpc_demo example/rpc_demo.cpp)
+target_link_libraries(rpc_demo nkn_sdk)
+
+add_executable(nkn_client_demo example/nkn_client_demo.cpp)
+target_link_libraries(nkn_client_demo nkn_sdk)
