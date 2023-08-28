@@ -1,0 +1,35 @@
+diff --git a/thirdparty/cpprestsdk/Release/libs/websocketpp/CMakeLists.txt b/thirdparty/cpprestsdk/Release/libs/websocketpp/CMakeLists.txt
+index 4f93e24..923fcb9 100644
+--- a/thirdparty/cpprestsdk/Release/libs/websocketpp/CMakeLists.txt
++++ b/thirdparty/cpprestsdk/Release/libs/websocketpp/CMakeLists.txt
+@@ -2,7 +2,7 @@
+ ############ Setup project and cmake
+ # Minimum cmake requirement. We should require a quite recent
+ # cmake for the dependency find macros etc. to be up to date.
+-cmake_minimum_required (VERSION 2.8.8)
++cmake_minimum_required (VERSION 3.9)
+ 
+ ############ Paths
+ 
+@@ -215,7 +215,7 @@ if (BUILD_TESTS OR BUILD_EXAMPLES)
+     set (Boost_USE_MULTITHREADED TRUE)
+     set (Boost_ADDITIONAL_VERSIONS "1.39.0" "1.40.0" "1.41.0" "1.42.0" "1.43.0" "1.44.0" "1.46.1") # todo: someone who knows better spesify these!
+ 
+-    find_package (Boost 1.39.0 COMPONENTS "${WEBSOCKETPP_BOOST_LIBS}")
++    find_package (Boost COMPONENTS ${WEBSOCKETPP_BOOST_LIBS})
+ 
+     if (Boost_FOUND)
+         # Boost is a project wide global dependency.
+diff --git a/thirdparty/cpprestsdk/Release/libs/websocketpp/websocketpp/common/md5.hpp b/thirdparty/cpprestsdk/Release/libs/websocketpp/websocketpp/common/md5.hpp
+index 279725f..359e4d6 100644
+--- a/thirdparty/cpprestsdk/Release/libs/websocketpp/websocketpp/common/md5.hpp
++++ b/thirdparty/cpprestsdk/Release/libs/websocketpp/websocketpp/common/md5.hpp
+@@ -198,7 +198,7 @@ static void md5_process(md5_state_t *pms, md5_byte_t const * data /*[64]*/) {
+          * On little-endian machines, we can process properly aligned
+          * data without copying it.
+          */
+-        if (!((data - (md5_byte_t const *)0) & 3)) {
++        if (!((size_t)data & 3)) {
+         /* data are properly aligned */
+         X = (md5_word_t const *)data;
+         } else {
